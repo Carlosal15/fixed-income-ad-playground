@@ -1,0 +1,52 @@
+site_name: fixed-income-ad-playground
+repo_url: https://github.com/carlosal15/fixed-income-ad-playground
+site_url: https://carlosal15.github.io/fixed-income-ad-playground
+site_description: This is a toy project to build a fixed income library with the (surely not novel) idea to use algorithmic differentiation (with jax) for pricing and calibration
+site_author: Carlos
+edit_uri: edit/main/docs/
+repo_name: carlosal15/fixed-income-ad-playground
+copyright: Maintained by <a href="https://carlosal15.com">carlosal15</a>.
+
+nav:
+  - Home: index.md
+  - Modules: modules.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["fixed_income_ad_playground"]
+theme:
+  name: material
+  feature:
+    tabs: true
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/carlosal15/fixed-income-ad-playground
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/fixed-income-ad-playground
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
