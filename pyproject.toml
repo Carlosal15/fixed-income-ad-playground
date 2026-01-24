@@ -38,7 +38,9 @@ dev = [
     "jax==0.9.0",
     "numpy==2.4.1",
     "polars==1.37.1",
-    "pandas==3.0.0"
+    "pandas==3.0.0",
+    "matplotlib",
+    "scipy==1.17.0"
 
 ]
 
@@ -105,6 +107,10 @@ ignore = [
     "E501",
     # DoNotAssignLambda
     "E731",
+    # unordered imports
+    "I001",
+    # use specific ignores
+    "PGH003",
 ]
 
 [tool.ruff.lint.per-file-ignores]
