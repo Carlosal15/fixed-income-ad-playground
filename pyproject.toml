@@ -5,7 +5,7 @@ description = "This is a toy project to build a fixed income library with the (s
 authors = [{ name = "Carlos", email = "car.aye.lat.work@gmail.com" }]
 readme = "README.md"
 keywords = ['python']
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11,<4.0"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python",
