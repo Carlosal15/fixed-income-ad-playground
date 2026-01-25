@@ -23,6 +23,15 @@ Homepage = "https://carlosal15.github.io/fixed-income-ad-playground/"
 Repository = "https://github.com/carlosal15/fixed-income-ad-playground"
 Documentation = "https://carlosal15.github.io/fixed-income-ad-playground/"
 
+dependencies = [
+    "jax==0.9.0",
+    "numpy==2.4.1",
+    "polars==1.37.1",
+    "pandas==3.0.0",
+    "matplotlib",
+    "scipy==1.17.0"
+    ]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
@@ -35,12 +44,6 @@ dev = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.1",
     "mkdocstrings[python]>=1.0.0",
-    "jax==0.9.0",
-    "numpy==2.4.1",
-    "polars==1.37.1",
-    "pandas==3.0.0",
-    "matplotlib",
-    "scipy==1.17.0",
     "scipy-stubs"
 
 ]
