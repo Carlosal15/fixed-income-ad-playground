@@ -12,27 +12,46 @@ This is a toy/playground for a fixed income library that uses algorithmic differ
 <!-- - **Documentation** <https://carlosal15.github.io/fixed-income-ad-playground/> -->
 
 # Motivation
-In simple terms: Pricing a fixed income instrument, like a swap, requires yield curves to act as forecast of rates and/or discount factors. Yield curves are calibrated to market quotes of fixed income instruments (as per some config per curveset). Pricing is going from curve -> quotes, calibrating is going from quotes -> curves.
 
-By using algorithmic differentiation (AD), we can only write one of the paths, and let AD take care of the reverse. That is, we can just define how to price a swap off some curve(s), and let AD give us the corresponding jacobian from swap quotes to curves.
+In simple terms: pricing a fixed income instrument, like a swap, requires yield curves to act as forecasts of rates and/or discount factors. Yield curves themselves are calibrated to market quotes of fixed income instruments (as per some curveset config). Pricing is going from curve → quotes; calibration is going from quotes → curves.
 
-This idea is certainly not novel. Algorithmic differentiation has been around for more than half a century and is widely used in a number of fields. ML in particular has resulted in the emergence of powerful libraries like Pytorch, TensorFlow and JAX, which have made python the reigning ground for ML model development. Finance has also adopted similar approaches, as that allows, for example, the very efficient computation of the effects of different risk factors for large portfolios with adjoint AD (AAD).
+By using algorithmic differentiation (AD), we can write only one of these paths and let AD “take care” of the reverse (i.e. the derivatives). That is, we define how to price a swap off some curve(s), and let AD provide the corresponding Jacobians of instrument prices with respect to curve parameters.
 
-Coming back to the problem of curve calibration with AD, a simple example appears in J. H. M. Darbyshire, Pricing and Trading Interest Rate Derivatives: A Practical Guide to Swaps by J. H. M. Darbyshire (3rd edition, 2022). In it, he explains and uses the AD approach of dual numbers to exemplify how to calibrate a curve from swap quotes.
+This idea is certainly not novel. Algorithmic differentiation has been around for more than half a century and is widely used in a number of fields. Machine learning in particular has resulted in the emergence of powerful libraries like PyTorch, TensorFlow, and JAX, which have made Python the dominant language for ML model development. Finance has also adopted similar approaches, for example to efficiently compute sensitivities of large portfolios via adjoint algorithmic differentiation (AAD).
 
-In this toy project, I want to explore that same core idea of how a fixed income quant library would use AD for both pricing and calibration, but using the JAX library. [JAX](https://docs.jax.dev/en/latest/) is a powerful library widely used in ML circles with a numpy-style api and extensive tooling. Particularly interesting is that it supports JIT compilation for lightning-fast computation, while only developing at the python level. One can write relatively straightforward pricing functions, and let jax handle the optimisation and dispatch of jacobians for a whole curveset. However, JAX also enforces a number of constraints. First, all code that leverages JAX needs to use JAX natives (JAX ndarrays, etc.) and JAX-compatible code (e.g., no if conditions); this means that either the whole library only speaks jax, or any kind of public/user api should handle converting inputs to JAX compatibles, and sit on top of a JAX kernel. Second, JAX uses functional programming, which constraints OOP designs, dynamic dispatches, etc. Third, jitted functions are cached by input shapes; using the same function to price, say, 10 swaps first and then 100 swaps would require a new jit compilation the second time around, with the corresponding overhead.
+Coming back to the problem of curve calibration with AD, a simple example appears in *Pricing and Trading Interest Rate Derivatives: A Practical Guide to Swaps* by J. H. M. Darbyshire (3rd edition, 2022). In it, he uses a forward-mode AD approach based on dual numbers to illustrate how one can calibrate a curve directly from swap quotes.
 
-These constraints drive the design of one such library, and the purpose of this personal package is both to explore that in its minimal form, as well as inspecting the corresponding performance. A POC script can be found in _poc/poc.py, which calibrates a simple curve (in instantaneous forward rates space [HJM]) with 30 input instruments in less than 10ms, with a jacobian evaluation cost of only 0.2ms. When tested with 500 instruments, calibration remains below 100ms. This is good performance for the core calibration engine. Naturally, in a python production library, there would be  more overhead from tooling not related to the core calibration (tooling around conventions, dates, market data, etc.); or one might have a C++ library that uses AD directly without the need of JIT. But as a general idea for the plumbing behind a python quant library, I found it an interesting approach.
+In this project, I explore the same core idea of how a fixed income quant library could use AD for both pricing and calibration, but using the JAX library. [JAX](https://docs.jax.dev/en/latest/) is a powerful library widely used in ML circles, with a NumPy-style API and extensive tooling. Particularly interesting is that it supports JIT compilation for lightning-fast computation while developing entirely at the Python level.
+
+One can write relatively straightforward pricing functions and let JAX handle the computation and dispatch of Jacobians for an entire curveset. However, JAX also enforces a number of constraints. First, all code that runs inside JAX-compiled kernels must use JAX primitives (JAX arrays, `jax.numpy`, etc.) and avoid Python control flow that depends on traced values (e.g. standard `if` statements inside jitted code). This would mean that either the whole library must speak JAX, or that any public/user-facing API must translate inputs into JAX-compatible representations and sit on top of that JAX kernel. Second, JAX follows a functional programming model, which constrains OOP designs, dynamic dispatch, and inheritance-heavy architectures. Third, JIT-compiled functions are cached by input shapes; using the same function to price, say, 10 swaps first and then 100 swaps would require a new JIT compilation the second time around, with the corresponding overhead.
+
+These constraints drive the design of such a library. The purpose of this toy project is to explore this design space in a minimal setting, as well as to see what performance it could achieve. A POC script can be found in `_poc/poc.py`, which calibrates a simple curve (in instantaneous forward rate space, HJM-style) with 30 input instruments in less than 10ms, with a Jacobian evaluation cost of around 0.2ms. When tested with 500 instruments, calibration remains below 100ms.
+
+This is good performance for the core calibration engine. Naturally, a production Python library would incur additional overhead from tooling unrelated to the core calibration logic (conventions, dates, market data, orchestration, etc.), or one might use a C++ library that applies AD directly without relying on JIT compilation. But as a general idea for the plumbing behind a python quant library, I found it an interesting approach.
 
 # Pros & Cons
+
 ### Advantages
-- Same code does pricing and calibration. Ensures consistency by design and saves developer time (quants are expensive!).
-- Compiled performance with python code.
+- The same code is used for pricing and calibration, ensuring consistency by design and reducing development work (quants are expensive!).
+- Compiled performance while writing Python code.
 
 ### Disadvantages
-- Design must work around JAX constraints (functional-first, difficult for OOP, no if conditions, etc.)
-- At least the kernel must be pure jax. If required to speak another language (e.g. numpy), there should be a translation layer at the public api level.
-- To prevent JIT warm-up overhead, function inputs must remain the same shape as much as possible. May require e.g. padding.
+- The design must work around JAX constraints (functional-first style, limited OOP patterns, restricted control flow inside JIT).
+- At least the kernel must be pure JAX; if another interface is required (e.g. NumPy), a translation layer is needed at the public API level.
+- To prevent JIT warm-up overhead, function inputs should remain shape-stable as much as possible, which may require padding or packing strategies.
 
+# Goals and Non-goals
 
+- Explore a design that uses JAX at the center of curve calibration, both in terms of implementation and achievable performance.
+- Provide a demo public API for defining configurations, instrument conventions, requesting pricing and metrics, etc.
 
+A fully fledged library would require significantly more plumbing (additional instrument types and derivatives, calendars and date logic, conventions, risk metrics, volatility models, and a large etc.). At the time of writing, this repository contains only a proof-of-concept with a single step-wise constant curve and mock OIS swaps. The first goal is to refactor and extend this into a more library-like structure with clearer interfaces and encapsulation, which can then be expanded further.
+
+**Non-goal**: building a production-ready fixed income library. This is an exploratory project focused on a core design idea.
+
+# Who this is for
+- Me.
+- Anyone implementing curve calibration in Python who wants to explore what performance and design trade-offs are possible with AD and JAX.
+
+<!-- # Architectural overview
+To be filled in later. -->
