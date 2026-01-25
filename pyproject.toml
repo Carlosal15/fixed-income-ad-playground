@@ -5,7 +5,7 @@ description = "This is a toy project to build a fixed income library with the (s
 authors = [{ name = "Carlos", email = "car.aye.lat.work@gmail.com" }]
 readme = "README.md"
 keywords = ['python']
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11,<4.0"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python",
@@ -28,13 +28,21 @@ dev = [
     "pytest>=9.0.2",
     "pre-commit>=4.5.1",
     "tox-uv>=1.29.0",
-    "deptry>=0.24.0",
+    # "deptry>=0.24.0",
     "mypy>=1.19.1",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.10",
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.1",
     "mkdocstrings[python]>=1.0.0",
+    "jax==0.9.0",
+    "numpy==2.4.1",
+    "polars==1.37.1",
+    "pandas==3.0.0",
+    "matplotlib",
+    "scipy==1.17.0",
+    "scipy-stubs"
+
 ]
 
 [build-system]
@@ -51,7 +59,7 @@ disallow_any_unimported = true
 no_implicit_optional = true
 check_untyped_defs = true
 warn_return_any = true
-warn_unused_ignores = true
+warn_unused_ignores = false
 show_error_codes = true
 
 [tool.pytest.ini_options]
@@ -59,7 +67,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 target-version = "py39"
-line-length = 120
+line-length = 100
 fix = true
 
 [tool.ruff.lint]
@@ -100,6 +108,10 @@ ignore = [
     "E501",
     # DoNotAssignLambda
     "E731",
+    # unordered imports
+    "I001",
+    # use specific ignores
+    "PGH003",
 ]
 
 [tool.ruff.lint.per-file-ignores]
