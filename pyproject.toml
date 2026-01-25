@@ -40,7 +40,8 @@ dev = [
     "polars==1.37.1",
     "pandas==3.0.0",
     "matplotlib",
-    "scipy==1.17.0"
+    "scipy==1.17.0",
+    "scipy-stubs"
 
 ]
 

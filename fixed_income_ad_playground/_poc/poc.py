@@ -20,7 +20,6 @@ Some more optimisations and calibration settings could be tweaked to improve fur
 - Residuals = [swap par fit residuals] + [optional penalty residual blocks]
 - residuals and jacobian jitted _once_ and reused across dates (assuming same shape)
 
-
 """
 
 from __future__ import annotations
