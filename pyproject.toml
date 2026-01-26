@@ -112,6 +112,8 @@ ignore = [
     "I001",
     # use specific ignores
     "PGH003",
+    # picky about exception messages
+    "TRY003"
 ]
 
 [tool.ruff.lint.per-file-ignores]
