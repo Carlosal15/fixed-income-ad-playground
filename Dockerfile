@@ -18,4 +18,4 @@ COPY . /app
 # Sync the project
 RUN uv sync --frozen
 
-CMD [ "python", "fixed_income_ad_playground/foo.py" ]
+# CMD [ "python", "fixed_income_ad_playground/foo.py" ]
