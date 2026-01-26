@@ -62,6 +62,7 @@ There's a simple jupyter notebook in the demos folder with some mock market data
 - The design must work around JAX constraints (functional-first style, limited OOP patterns, restricted control flow inside JIT).
 - At least the kernel must be pure JAX; if another interface is required (e.g. NumPy), a translation layer is needed at the public API level.
 - To prevent JIT warm-up overhead, function inputs should remain shape-stable as much as possible, which may require padding or packing strategies.
+- Perhaps, is developer time really cut with a less versatile architecture?
 
 ## Goals and Non-goals
 
@@ -71,7 +72,7 @@ There's a simple jupyter notebook in the demos folder with some mock market data
 - Provide some simple date & conventions in order to build a more usable user api.
 - More logic can be added for sticking to fixed-shape arrays where possible by designating a "fixed size provider" (dependent on its usage)!
 
-- **Non-goal**: building a production-ready fixed income library. This is an exploratory project focused on a core design idea.
+- **Non-goal**: building a production-ready fixed income library. This is an exploratory project focused on a core design idea. Or maybe it will evolve into a goal. Who knows.
 
 ## Who this is for
 - Me.
@@ -83,11 +84,10 @@ To be filled in later. -->
 
 This repo uses a **two-layer design** to balance flexibility with JAX performance:
 
----
 
-### 1. Domain / API layer (Python, OO-friendly)
+### 1. Domain / API layer (Python, ~OOP)
 
-This layer is **not jitted** and is designed for clarity, extensibility, and ergonomics.
+This layer is not jitted and is designed forthe public interface. Essentially, python glue.
 
 It includes:
 - **Instruments** (`SwapSpec`, future stubs, etc.)
@@ -103,11 +103,10 @@ This is where you would naturally add:
 
 Importantly, this layer **never performs math directly**: it delegates all numerical work to the kernel layer.
 
----
 
-### 2. Kernel layer (JAX, array-only)
+### 2. Kernel layer (JAX)
 
-This layer contains **pure, JAX-friendly functions** that operate only on arrays:
+This layer contains pure JAX-friendly functions that operate only on arrays:
 - discount factors
 - pricing formulas
 - penalty terms (slope, curvature, etc.)
@@ -121,21 +120,19 @@ Key properties:
 
 This is the only code that is `jit`-compiled and differentiated.
 
----
 
-### Core idea: one mathematical path
+### Core idea
 
 The **same kernel functions** are used for:
 - pricing (par rates, discount factors)
 - calibration (inside the residual vector)
 
-Classes like `Curve` and `SwapPricer` are thin **wrappers** over these kernels.
-They exist for API cleanliness, not for computation.
+Classes like `Curve` and `SwapPricer` are thin wrappers over these kernels.
+They exist purely for API purposes.
 
-Calibration does **not** call OO methods; it calls the kernel directly.
+The calibration "engine" does **not** call OO methods; it calls the kernel directly (it could be expanded with python code for extra logic or if the calibrator itself requires a user api, but that's the general idea).
 Pricing may use OO wrappers, but those wrappers ultimately call the same kernels.
 
----
 
 ### Extensibility
 
@@ -145,7 +142,6 @@ To add new functionality:
 - New penalties/constraints: add residual blocks with fixed shapes.
 
 
----
 
 ### JIT & performance considerations
 Expanding on what was metnioned above.
@@ -153,7 +149,7 @@ Expanding on what was metnioned above.
 - JAX caches compiled kernels by function + array shapes + dtypes.
 - Packing converts date-to-date instrument changes (missing quotes, schedule changes) into masked, fixed-shape arrays.
 - Calibration performance comes from:
-  - vectorized kernels
+  - compiled kernels
   - single AD pass for full Jacobian
   - reuse of compiled code across dates when shapes match
   - attempt to make shapes match!
