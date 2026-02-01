@@ -2,7 +2,7 @@ from fixed_income_ad_playground.types import FloatNDArray
 
 from fixed_income_ad_playground.packing.combined import PackedMarketBatches
 from fixed_income_ad_playground.kernels.residuals import RES_JIT, JAC_JIT
-from typing import Callable
+from collections.abc import Callable
 import numpy as np
 import jax.numpy as jnp
 import time
