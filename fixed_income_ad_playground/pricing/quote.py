@@ -23,6 +23,6 @@ class Quote:
     instrument: Instrument
     quote_type: QuoteType
     value: float
-    bid: float | None = None
-    ask: float | None = None
+    bid: float | None = None  # stub
+    ask: float | None = None  # stub
     weight: float = 1.0

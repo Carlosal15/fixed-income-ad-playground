@@ -17,6 +17,9 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+dependencies = [
+    "jaxopt>=0.8.5",
+]
 
 [project.urls]
 Homepage = "https://carlosal15.github.io/fixed-income-ad-playground/"
@@ -41,7 +44,8 @@ dev = [
     "pandas==3.0.0",
     "matplotlib",
     "scipy==1.17.0",
-    "scipy-stubs"
+    "scipy-stubs",
+    "optimistix"
 
 ]
 
@@ -66,7 +70,7 @@ show_error_codes = true
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py311"
 line-length = 100
 fix = true
 
