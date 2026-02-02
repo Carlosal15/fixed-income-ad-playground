@@ -7,7 +7,10 @@ generator, instantiated from the scipy wrapper, and letting that go into the jit
 residuals function.
 """
 
-from fixed_income_ad_playground.calibration.calibration import compute_forwards_all_curves
+from fixed_income_ad_playground.calibration.calibration import (  # type: ignore
+    compute_forwards_all_curves,
+    CurveGraphArrays,
+)
 from fixed_income_ad_playground.kernels.discount_factors import (
     dfs_from_precomputed,
     # dfs_from_stepwise_const_forwards,
@@ -18,7 +21,6 @@ from fixed_income_ad_playground.types import JaxArray
 from fixed_income_ad_playground.kernels.utils import safe_div
 import jax.numpy as jnp
 import jax
-from fixed_income_ad_playground.calibration.calibration import CurveGraphArrays
 
 
 # par swap rates are hardcoded to stepwise-constant instantaneous forwards

@@ -9,7 +9,7 @@ import jax
 from typing import cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from fixed_income_ad_playground.calibration.calibration import CurveGraphArrays
+    from fixed_income_ad_playground.calibration.calibration import CurveGraphArrays  # type: ignore
 
 
 def residuals_kernel(
@@ -37,7 +37,7 @@ def residuals_kernel(
     N = knot_times.size - 1
     P = lam_slope_per_param.size
 
-    def get_block(k):
+    def get_block(k):  # type: ignore
         start = k * N
         return jax.lax.dynamic_slice(params_concat, (start,), (N,))
 

@@ -1,3 +1,4 @@
+# type: ignore
 import jax
 import time
 from dataclasses import dataclass
@@ -77,13 +78,15 @@ class CurveGraphArrays:
     is_param: JaxArray
     num_param: int
 
-    def tree_flatten(self):
+    def tree_flatten(self) -> tuple[tuple[JaxArray, ...], dict[str, int]]:
         children = (self.param_pos, self.src_idx, self.src_w, self.src_mask, self.is_param)
         aux = {"num_param": int(self.num_param)}
         return children, aux
 
     @classmethod
-    def tree_unflatten(cls, aux, children):
+    def tree_unflatten(
+        cls, aux: dict[str, int], children: tuple[JaxArray, ...]
+    ) -> "CurveGraphArrays":
         (param_pos, src_idx, src_w, src_mask, is_param) = children
         return cls(param_pos, src_idx, src_w, src_mask, is_param, int(aux["num_param"]))
 
@@ -203,12 +206,12 @@ def compute_forwards_all_curves(
         is_param_i = graph.is_param[i]
         pos = graph.param_pos[i]
 
-        def compute_param(fa_in):
+        def compute_param(fa_in):  # type: ignore
             start = pos * N
             block = jax.lax.dynamic_slice(params_concat, (start,), (N,))
             return fa_in.at[i].set(block)
 
-        def compute_lincomb(fa_in):
+        def compute_lincomb(fa_in):  # type: ignore
             idxs = graph.src_idx[i]
             ws = graph.src_w[i]
             ms = graph.src_mask[i]
