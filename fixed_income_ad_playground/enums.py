@@ -45,4 +45,4 @@ class PaymentFrequency(StrEnum):
 
 class CurveDefKind(StrEnum):
     PARAM = "param"
-    LINCOMB = "lincomb"
+    LINEAR_COMB = "linear_comb"

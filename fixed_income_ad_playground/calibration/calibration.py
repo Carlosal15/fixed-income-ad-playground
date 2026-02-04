@@ -103,7 +103,7 @@ def build_curve_graph_arrays(
     num_param = len(param_curve_ids)
 
     max_sources = max(
-        (len(cd.sources) for cd in curve_defs if cd.kind == CurveDefKind.LINCOMB), default=1
+        (len(cd.sources) for cd in curve_defs if cd.kind == CurveDefKind.LINEAR_COMB), default=1
     )
     max_sources = max(max_sources, 1)
 
@@ -172,7 +172,7 @@ def make_calib_static(
     spec: CurveSetSpec,
 ) -> CalibStatic:
     # param curve order is the order in curve_defs where kind == param
-    param_curve_ids = tuple(cd.curve_id for cd in spec.curve_defs if cd.kind == "param")
+    param_curve_ids = tuple(cd.curve_id for cd in spec.curve_defs if cd.kind == CurveDefKind.PARAM)
     lam_slope_np = np.array(
         [spec.curve_configs[cid].lam_slope for cid in param_curve_ids], dtype=np.float64
     )

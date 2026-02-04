@@ -30,7 +30,7 @@ class Curve:
         Instantaneous forward for stepwise-const-forward.
         For other interpolators, implement later.
         """
-        match self.interpolator.interpolator_type:
+        match self.interpolator.interp:
             case InterpType.STEPWISE_CONST_FWD:
                 idx = jnp.clip(
                     jnp.searchsorted(self.knot_times, t, side="right") - 1, 0, self.params.size - 1
@@ -38,7 +38,7 @@ class Curve:
                 return self.params[idx]
             case _:
                 raise NotImplementedError(
-                    f"Not implemented for interpolator type {self.interpolator.interpolator_type}"
+                    f"Not implemented for interpolator type {self.interpolator.interp}"
                 )
 
 

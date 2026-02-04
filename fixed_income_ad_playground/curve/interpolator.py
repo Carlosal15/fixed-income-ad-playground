@@ -12,7 +12,7 @@ class Interpolator(ABC):
     Additional interpolators can be added behind this interface.
     """
 
-    interpolator_type: InterpType
+    interp: InterpType
 
     @abstractmethod
     def discount_factors(self, knot_times: JaxArray, params: JaxArray, t: JaxArray) -> JaxArray: ...

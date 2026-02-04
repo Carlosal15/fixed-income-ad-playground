@@ -2,6 +2,7 @@ import time
 import jax
 import jax.numpy as jnp
 import numpy as np
+import matplotlib.pyplot as plt
 from fixed_income_ad_playground._demo.demo_cases import (
     BenchLine,
     build_maturities_years,
@@ -16,7 +17,14 @@ from fixed_income_ad_playground.calibration.calibration import (
     make_calib_static,
 )
 from fixed_income_ad_playground.curve.curve_config import CurveConfig
-from fixed_income_ad_playground.enums import SwapIndex
+from fixed_income_ad_playground.enums import (
+    Currency,
+    CurveDefKind,
+    InterpType,
+    PaymentFrequency,
+    QuoteType,
+    SwapIndex,
+)
 from fixed_income_ad_playground.identifiers.identifiers import CurveId, InstrumentId
 from fixed_income_ad_playground.instruments.instrument import PackContext
 from fixed_income_ad_playground.instruments.swap import SwapSpec
@@ -36,6 +44,8 @@ def main(  # noqa: C901
     noise_bps: float = 0.1,
     max_steps: int = 80,
     jac_mode: str = "fwd",
+    plot: bool = False,
+    plot_date_idx: int | None = None,
 ) -> None:
     """
     Notebook usage:
@@ -59,19 +69,27 @@ def main(  # noqa: C901
         FF = CurveId("USD_FEDFUNDS")
 
         curve_defs = [
-            CurveDef(SOFR, "param"),
-            CurveDef(SPRD, "param"),
-            CurveDef(FF, "lincomb", sources=((SOFR, 1.0), (SPRD, 1.0))),
+            CurveDef(SOFR, CurveDefKind.PARAM),
+            CurveDef(SPRD, CurveDefKind.PARAM),
+            CurveDef(FF, CurveDefKind.LINEAR_COMB, sources=((SOFR, 1.0), (SPRD, 1.0))),
         ]
         curve_configs = {
-            SOFR: CurveConfig(SOFR, interp="stepwise_const_fwd", lam_slope=1e-4, lam_curv=1e-6),
-            SPRD: CurveConfig(SPRD, interp="stepwise_const_fwd", lam_slope=1e-4, lam_curv=1e-6),
+            SOFR: CurveConfig(
+                SOFR,
+                interp=InterpType.STEPWISE_CONST_FWD,
+                lam_slope=0.0,
+                lam_curv=0.0,
+                lam_level=1e-6,
+            ),
+            SPRD: CurveConfig(
+                SPRD, interp=InterpType.STEPWISE_CONST_FWD, lam_slope=0.0, lam_curv=0.0
+            ),
         }
 
         # Refdata mapping: convention -> (discount, forecast)
         refdata = ReferenceDataContainer({
-            "USD_SOFR_OIS": (SOFR, SOFR),
-            "USD_FF": (SOFR, FF),
+            SwapIndex.USD_SOFR_OIS: (SOFR, SOFR),
+            SwapIndex.USD_FF: (SOFR, FF),
         })
 
         # pricing conventions for demo swaps
@@ -88,23 +106,26 @@ def main(  # noqa: C901
         FF = CurveId("USD_FEDFUNDS")
 
         curve_defs = [
-            CurveDef(SOFR, "param"),
-            CurveDef(SPRD, "param"),
-            CurveDef(FF, "lincomb", sources=((SOFR, 1.0), (SPRD, 1.0))),
+            CurveDef(SOFR, CurveDefKind.PARAM),
+            CurveDef(SPRD, CurveDefKind.PARAM),
+            CurveDef(FF, CurveDefKind.LINEAR_COMB, sources=((SOFR, 1.0), (SPRD, 1.0))),
         ]
         curve_configs = {
-            SOFR: CurveConfig(SOFR, interp="stepwise_const_fwd", lam_slope=1e-4, lam_curv=1e-6),
-            SPRD: CurveConfig(SPRD, interp="stepwise_const_fwd", lam_slope=1e-4, lam_curv=1e-6),
+            SOFR: CurveConfig(
+                SOFR, interp=InterpType.STEPWISE_CONST_FWD, lam_slope=1e-4, lam_curv=1e-6
+            ),
+            SPRD: CurveConfig(
+                SPRD, interp=InterpType.STEPWISE_CONST_FWD, lam_slope=1e-4, lam_curv=1e-6
+            ),
         }
 
         refdata = ReferenceDataContainer({
-            "USD_SOFR_OIS": (SOFR, SOFR),
-            "USD_FF": (SOFR, FF),
+            SwapIndex.USD_SOFR_OIS: (SOFR, SOFR),
+            SwapIndex.USD_FF: (SOFR, FF),
         })
 
-        ois_idx = "USD_SOFR_OIS"
-        ff_idx = "USD_FF"
-
+        ois_idx = SwapIndex.USD_SOFR_OIS
+        ff_idx = SwapIndex.USD_FF
     elif case == "eur_200":
         label = "EUR-4curve-200swaps"
         n_mats = 50
@@ -116,27 +137,35 @@ def main(  # noqa: C901
         BASIS = CurveId("EUR_BASIS")
 
         curve_defs = [
-            CurveDef(ESTR, "param"),
-            CurveDef(EUR3M, "param"),
-            CurveDef(EUR6M, "param"),
-            CurveDef(BASIS, "param"),
+            CurveDef(ESTR, CurveDefKind.PARAM),
+            CurveDef(EUR3M, CurveDefKind.PARAM),
+            CurveDef(EUR6M, CurveDefKind.PARAM),
+            CurveDef(BASIS, CurveDefKind.PARAM),
         ]
         curve_configs = {
-            ESTR: CurveConfig(ESTR, interp="stepwise_const_fwd", lam_slope=1e-4, lam_curv=1e-6),
-            EUR3M: CurveConfig(EUR3M, interp="stepwise_const_fwd", lam_slope=1e-4, lam_curv=1e-6),
-            EUR6M: CurveConfig(EUR6M, interp="stepwise_const_fwd", lam_slope=1e-4, lam_curv=1e-6),
-            BASIS: CurveConfig(BASIS, interp="stepwise_const_fwd", lam_slope=1e-4, lam_curv=1e-6),
+            ESTR: CurveConfig(
+                ESTR, interp=InterpType.STEPWISE_CONST_FWD, lam_slope=1e-4, lam_curv=1e-6
+            ),
+            EUR3M: CurveConfig(
+                EUR3M, interp=InterpType.STEPWISE_CONST_FWD, lam_slope=1e-4, lam_curv=1e-6
+            ),
+            EUR6M: CurveConfig(
+                EUR6M, interp=InterpType.STEPWISE_CONST_FWD, lam_slope=1e-4, lam_curv=1e-6
+            ),
+            BASIS: CurveConfig(
+                BASIS, interp=InterpType.STEPWISE_CONST_FWD, lam_slope=1e-4, lam_curv=1e-6
+            ),
         }
 
         refdata = ReferenceDataContainer({
-            "EUR_ESTR_OIS": (ESTR, ESTR),
-            "EUR_EURIBOR3M": (ESTR, EUR3M),
-            "EUR_EURIBOR6M": (ESTR, EUR6M),
+            SwapIndex.EUR_ESTR_OIS: (ESTR, ESTR),
+            SwapIndex.EUR_EURIBOR3M: (ESTR, EUR3M),
+            SwapIndex.EUR_EURIBOR6M: (ESTR, EUR6M),
         })
 
         # for EUR demo we will use multiple indices
-        ois_idx = "EUR_ESTR_OIS"
-        ff_idx = "EUR_EURIBOR3M"  # just reuse variable name in the demo
+        ois_idx = SwapIndex.EUR_ESTR_OIS
+        ff_idx = SwapIndex.EUR_EURIBOR3M  # just reuse variable name in the demo
 
     else:
         raise ValueError(f"unknown case={case}")
@@ -144,10 +173,22 @@ def main(  # noqa: C901
     spec = CurveSetSpec(curve_defs=curve_defs, curve_configs=curve_configs)
     curve_id_to_idx, graph = build_curve_graph_arrays(spec.curve_defs)
 
-    # knot grid (demo: uniform)
-    knot_times = np.linspace(0.0, maxT, n_mats + 1).astype(np.float64)
-    knot_times[0] = 0.0
-    mats = build_maturities_years(n_mats, maxT)
+    # knot grid and maturities
+    # For the USD-50 case, extend calibration with 15Y and 20Y swaps
+    # while keeping plots capped at 10Y.
+    if case == "usd_50":
+        base_grid = np.linspace(0.0, 10.0, n_mats + 1).astype(np.float64)
+        base_grid[0] = 0.0
+        knot_times = np.concatenate([base_grid, np.array([15.0, 20.0], dtype=np.float64)])
+        mats = np.concatenate([
+            build_maturities_years(n_mats, 10.0),
+            np.array([15.0, 20.0], dtype=np.float64),
+        ])
+    else:
+        # default behavior: uniform grid up to maxT
+        knot_times = np.linspace(0.0, maxT, n_mats + 1).astype(np.float64)
+        knot_times[0] = 0.0
+        mats = build_maturities_years(n_mats, maxT)
 
     # --------------------------
     # Build calibration quotes (python layer only)
@@ -159,9 +200,13 @@ def main(  # noqa: C901
             quotes.append(
                 Quote(
                     SwapSpec(
-                        InstrumentId(f"SOFR_{m:.3f}"), "USD", ois_idx, float(m), float_leg_freq="S"
+                        InstrumentId(f"SOFR_{m:.3f}"),
+                        Currency.USD,
+                        ois_idx,
+                        float(m),
+                        float_leg_freq=PaymentFrequency.S,
                     ),
-                    "par_rate",
+                    QuoteType.PAR_RATE,
                     0.0,
                 )
             )
@@ -169,9 +214,13 @@ def main(  # noqa: C901
             quotes.append(
                 Quote(
                     SwapSpec(
-                        InstrumentId(f"FF_{m:.3f}"), "USD", ff_idx, float(m), float_leg_freq="S"
+                        InstrumentId(f"FF_{m:.3f}"),
+                        Currency.USD,
+                        ff_idx,
+                        float(m),
+                        float_leg_freq=PaymentFrequency.S,
                     ),
-                    "par_rate",
+                    QuoteType.PAR_RATE,
                     0.0,
                 )
             )
@@ -182,12 +231,12 @@ def main(  # noqa: C901
                 Quote(
                     SwapSpec(
                         InstrumentId(f"OIS_{m:.3f}"),
-                        "EUR",
-                        "EUR_ESTR_OIS",
+                        Currency.EUR,
+                        SwapIndex.EUR_ESTR_OIS,
                         float(m),
-                        float_leg_freq="S",
+                        float_leg_freq=PaymentFrequency.S,
                     ),
-                    "par_rate",
+                    QuoteType.PAR_RATE,
                     0.0,
                 )
             )
@@ -196,12 +245,12 @@ def main(  # noqa: C901
                 Quote(
                     SwapSpec(
                         InstrumentId(f"3M_{m:.3f}"),
-                        "EUR",
-                        "EUR_EURIBOR3M",
+                        Currency.EUR,
+                        SwapIndex.EUR_EURIBOR3M,
                         float(m),
-                        float_leg_freq="Q",
+                        float_leg_freq=PaymentFrequency.Q,
                     ),
-                    "par_rate",
+                    QuoteType.PAR_RATE,
                     0.0,
                 )
             )
@@ -210,12 +259,12 @@ def main(  # noqa: C901
                 Quote(
                     SwapSpec(
                         InstrumentId(f"6M_{m:.3f}"),
-                        "EUR",
-                        "EUR_EURIBOR6M",
+                        Currency.EUR,
+                        SwapIndex.EUR_EURIBOR6M,
                         float(m),
-                        float_leg_freq="S",
+                        float_leg_freq=PaymentFrequency.S,
                     ),
-                    "par_rate",
+                    QuoteType.PAR_RATE,
                     0.0,
                 )
             )
@@ -224,13 +273,13 @@ def main(  # noqa: C901
                 Quote(
                     SwapSpec(
                         InstrumentId(f"OIS2_{m:.3f}"),
-                        "EUR",
-                        "EUR_ESTR_OIS",
+                        Currency.EUR,
+                        SwapIndex.EUR_ESTR_OIS,
                         float(m),
                         float(m),
-                        float_leg_freq="S",
+                        float_leg_freq=PaymentFrequency.S,
                     ),
-                    "par_rate",
+                    QuoteType.PAR_RATE,
                     0.0,
                 )
             )
@@ -427,7 +476,10 @@ def main(  # noqa: C901
     # For simplicity: re-run the best solver once on the last date to get params,
     # then build the Market and price a couple of swaps.
     # (In your production workflow you'd keep the last_x from the bench loop.)
-    last_mp = jnp.array(market_par_dates[-1])
+    # Choose date for final run/plot
+    chosen_idx = int(n_dates - 1) if (plot_date_idx is None) else int(plot_date_idx)
+    chosen_idx = max(0, min(chosen_idx, len(market_par_dates) - 1))
+    chosen_mp = jnp.array(market_par_dates[chosen_idx])
 
     if "LS-" in best.name:
         # map back to solver kind
@@ -445,22 +497,48 @@ def main(  # noqa: C901
             run_jit, _ = calib.build_optx_scalar_value_only("nonlinear_cg", max_steps=max_steps)
         else:
             run_jit, _ = calib.build_optx_scalar_value_only("lbfgs", max_steps=max_steps)
-
-    x_star = run_jit(x0_j, last_mp).block_until_ready()
+    # Calibrate on chosen date using the fastest solver
+    x_star = run_jit(x0_j, chosen_mp).block_until_ready()
     market = calib.build_market(x_star)
+    # Build "true" market curves from the synthetic true parameters used in generation
+    market_true = calib.build_market(jnp.array(params_true))
 
     pricer = Pricer()
 
     # Pricing demo instruments (python layer)
     if case.startswith("usd"):
         test_swaps = [
-            SwapSpec(InstrumentId("TEST_SOFR_5Y"), "USD", "USD_SOFR_OIS", 5.0, float_leg_freq="S"),
-            SwapSpec(InstrumentId("TEST_FF_5Y"), "USD", "USD_FF", 5.0, float_leg_freq="S"),
+            SwapSpec(
+                InstrumentId("TEST_SOFR_5Y"),
+                Currency.USD,
+                SwapIndex.USD_SOFR_OIS,
+                5.0,
+                float_leg_freq=PaymentFrequency.S,
+            ),
+            SwapSpec(
+                InstrumentId("TEST_FF_5Y"),
+                Currency.USD,
+                SwapIndex.USD_FF,
+                5.0,
+                float_leg_freq=PaymentFrequency.S,
+            ),
         ]
     else:
         test_swaps = [
-            SwapSpec(InstrumentId("TEST_ESTR_7Y"), "EUR", "EUR_ESTR_OIS", 7.0, float_leg_freq="S"),
-            SwapSpec(InstrumentId("TEST_3M_7Y"), "EUR", "EUR_EURIBOR3M", 7.0, float_leg_freq="Q"),
+            SwapSpec(
+                InstrumentId("TEST_ESTR_7Y"),
+                Currency.EUR,
+                SwapIndex.EUR_ESTR_OIS,
+                7.0,
+                float_leg_freq=PaymentFrequency.S,
+            ),
+            SwapSpec(
+                InstrumentId("TEST_3M_7Y"),
+                Currency.EUR,
+                SwapIndex.EUR_EURIBOR3M,
+                7.0,
+                float_leg_freq=PaymentFrequency.Q,
+            ),
         ]
 
     print("\n--- Pricing demo off calibrated Market (python layer) ---")
@@ -468,14 +546,79 @@ def main(  # noqa: C901
         par = pricer.par_rate(market, s, ctx, refdata)
         print(f"{s.instrument_id.name:16s} | index={s.index:14s} | par={par * 1e4:9.3f} bp")
 
-    # Optional: show a small sanity check on curve outputs
-    # (No plotting to keep this minimal and fast; add matplotlib plot if you want.)
-    t_grid = jnp.array(np.linspace(0.5, float(maxT), 6), dtype=jnp.float64)
-    first_curve = next(iter(market.curves.values()))
-    z = np.asarray(first_curve.zero_rate(t_grid))
-    print(f"\nSample zeros for curve {first_curve.curve_id.name}:")
-    for t, zz in zip(np.asarray(t_grid), z, strict=False):
-        print(f"  t={t:5.2f}y  z={zz * 100:8.4f}%")
+    # Optional plotting: calibrated vs true curves for chosen date
+    if plot:
+        # Always cap plots to 10Y regardless of calibration horizon
+        plot_T = 10.0
+        t_grid = jnp.array(np.linspace(0.01, plot_T, 400), dtype=jnp.float64)
+
+        # Build a stable list of curve IDs and a color palette
+        curve_ids = list(market.curves.keys())
+        cmap = plt.get_cmap("tab10")
+
+        # Zero curves: pair colors, TRUE dashed, CAL solid
+        plt.figure(figsize=(10, 4))
+        for i, cid in enumerate(curve_ids):
+            color = cmap(i % 10)
+            z_true = np.asarray(market_true.curves[cid].zero_rate(t_grid))
+            z_cal = np.asarray(market.curves[cid].zero_rate(t_grid))
+            plt.plot(
+                np.asarray(t_grid),
+                z_true * 100.0,
+                linestyle="--",
+                color=color,
+                label=f"TRUE {cid.name}",
+            )
+            plt.plot(
+                np.asarray(t_grid),
+                z_cal * 100.0,
+                linestyle="-",
+                color=color,
+                label=f"CAL {cid.name}",
+            )
+        plt.title(f"Zero Curves (date idx={chosen_idx})")
+        plt.xlabel("Maturity (years)")
+        plt.ylabel("Zero rate (%)")
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+        # Instantaneous forward (IFR) curves: separate figure, same styling
+        plt.figure(figsize=(10, 4))
+        for i, cid in enumerate(curve_ids):
+            color = cmap(i % 10)
+            f_true = np.asarray(market_true.curves[cid].ifr(t_grid))
+            f_cal = np.asarray(market.curves[cid].ifr(t_grid))
+            plt.plot(
+                np.asarray(t_grid),
+                f_true * 100.0,
+                linestyle="--",
+                color=color,
+                label=f"TRUE {cid.name}",
+            )
+            plt.plot(
+                np.asarray(t_grid),
+                f_cal * 100.0,
+                linestyle="-",
+                color=color,
+                label=f"CAL {cid.name}",
+            )
+        plt.title(f"Instantaneous Forward Curves (date idx={chosen_idx})")
+        plt.xlabel("Maturity (years)")
+        plt.ylabel("Instantaneous forward (%)")
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+    else:
+        # Keep lightweight text sample when not plotting
+        t_grid = jnp.array(np.linspace(0.5, float(maxT), 6), dtype=jnp.float64)
+        first_curve = next(iter(market.curves.values()))
+        z = np.asarray(first_curve.zero_rate(t_grid))
+        print(f"\nSample zeros for curve {first_curve.curve_id.name}:")
+        for t, zz in zip(np.asarray(t_grid), z, strict=False):
+            print(f"  t={t:5.2f}y  z={zz * 100:8.4f}%")
 
 
 if __name__ == "__main__":
