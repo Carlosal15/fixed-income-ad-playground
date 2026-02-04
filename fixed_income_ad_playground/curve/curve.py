@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from fixed_income_ad_playground.curve.interpolator import Interpolator
+from fixed_income_ad_playground.enums import InterpType
 from fixed_income_ad_playground.types import JaxArray
 from fixed_income_ad_playground.identifiers.identifiers import CurveId
 import jax.numpy as jnp
@@ -30,14 +31,14 @@ class Curve:
         For other interpolators, implement later.
         """
         match self.interpolator.interpolator_type:
-            case "stepwise_const_fwd":
+            case InterpType.STEPWISE_CONST_FWD:
                 idx = jnp.clip(
                     jnp.searchsorted(self.knot_times, t, side="right") - 1, 0, self.params.size - 1
                 )
                 return self.params[idx]
             case _:
                 raise NotImplementedError(
-                    f"fwd_inst not implemented for interpolator type {self.interpolator.interpolator_type}"
+                    f"Not implemented for interpolator type {self.interpolator.interpolator_type}"
                 )
 
 

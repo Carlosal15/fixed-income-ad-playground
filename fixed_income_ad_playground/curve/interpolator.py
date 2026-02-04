@@ -21,7 +21,7 @@ class Interpolator(ABC):
 # only one currently implemented
 @dataclass(frozen=True)
 class StepwiseConstFwdInterpolator(Interpolator):
-    interp: InterpType = "stepwise_const_fwd"
+    interp = InterpType.STEPWISE_CONST_FWD
 
     def discount_factors(self, knot_times: JaxArray, params: JaxArray, t: JaxArray) -> JaxArray:
         return dfs_from_stepwise_const_forwards(knot_times, params, t)
@@ -35,17 +35,19 @@ class MixedConstQuadraticInterpolator(Interpolator):
 
     # In production this should take either a date time or a knot index
     switch_at: float = 0.0
-    interp: InterpType = "mixed_const_quadratic"
+    interp = InterpType.MIXED_CONST_QUADRATIC
 
     def discount_factors(self, knot_times: JaxArray, params: JaxArray, t: JaxArray) -> JaxArray:
         raise NotImplementedError("mixed_const_quadratic interpolator stub")
 
 
 def make_interpolator(cfg: CurveConfig) -> Interpolator:
-    if cfg.interp == "stepwise_const_fwd":
-        return StepwiseConstFwdInterpolator()
-    if cfg.interp == "mixed_const_quadratic":
-        return MixedConstQuadraticInterpolator(switch_at=cfg.mixed_switch_time)
-    if cfg.interp == "quadratic":
-        raise NotImplementedError("quadratic interpolator stub")
-    raise ValueError(f"Unknown interpolator={cfg.interp}")
+    match cfg.interp:
+        case InterpType.STEPWISE_CONST_FWD:
+            return StepwiseConstFwdInterpolator()
+        case InterpType.MIXED_CONST_QUADRATIC:
+            return MixedConstQuadraticInterpolator(switch_at=cfg.mixed_switch_time)
+        case InterpType.QUADRATIC:
+            raise NotImplementedError("quadratic interpolator stub")
+        case _:
+            raise ValueError(f"Unknown interpolator={cfg.interp}")

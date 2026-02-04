@@ -75,8 +75,8 @@ def main(  # noqa: C901
         })
 
         # pricing conventions for demo swaps
-        ois_idx: SwapIndex = "USD_SOFR_OIS"
-        ff_idx: SwapIndex = "USD_FF"
+        ois_idx = SwapIndex.USD_SOFR_OIS
+        ff_idx = SwapIndex.USD_FF
 
     elif case == "usd_100":
         label = "USD-2curve-100swaps"

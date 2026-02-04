@@ -31,8 +31,8 @@ class SwapSpec(Instrument):
     maturity: float  # years (tenor length)
     notional: float = 1_000_000.0
     forward_start_years: float = 0.0  # forward start
-    fixed_leg_freq: PaymentFrequency = "A"
-    float_leg_freq: PaymentFrequency = "S"
+    fixed_leg_freq: PaymentFrequency = PaymentFrequency.A
+    float_leg_freq: PaymentFrequency = PaymentFrequency.S
 
     def pack(self, ctx: PackContext, reference_data: ReferenceDataContainer) -> PackedSwap:
         tenor = float(self.maturity)

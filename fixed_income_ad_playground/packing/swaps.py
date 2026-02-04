@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from fixed_income_ad_playground.enums import QuoteType
 from fixed_income_ad_playground.identifiers.identifiers import CurveId
 from fixed_income_ad_playground.instruments.instrument import PackContext
 from fixed_income_ad_playground.pricing.quote import Quote
@@ -118,7 +119,7 @@ def pack_swaps_pooled(
     notionals: list[float] = []
 
     for q in quotes:
-        if q.quote_type != "par_rate":
+        if q.quote_type != QuoteType.PAR_RATE:
             raise ValueError("Only par_rate supported in this demo.")
         p = q.instrument.pack(ctx, refdata)
         if not isinstance(p, PackedSwap):

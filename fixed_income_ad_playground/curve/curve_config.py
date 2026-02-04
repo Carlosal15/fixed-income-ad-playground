@@ -50,7 +50,7 @@ class CurveConfig:
     """
 
     curve_id: CurveId
-    interp: InterpType = "stepwise_const_fwd"
+    interp: InterpType = InterpType.STEPWISE_CONST_FWD
     lam_slope: float = 0.0
     lam_curv: float = 0.0
     lam_level: float = 0.0

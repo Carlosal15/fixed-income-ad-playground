@@ -15,6 +15,7 @@ from fixed_income_ad_playground.curve.curve_config import CurveConfig
 from fixed_income_ad_playground.types import JaxArray
 import jax.tree_util as jtu
 from fixed_income_ad_playground.kernels.residuals import residuals_kernel
+from fixed_income_ad_playground.enums import InterpType
 
 
 @dataclass(frozen=True)
@@ -97,11 +98,13 @@ def build_curve_graph_arrays(
     curve_id_to_idx: dict[CurveId, int] = {cd.curve_id: i for i, cd in enumerate(curve_defs)}
     n_curves = len(curve_defs)
 
-    param_curve_ids = [cd.curve_id for cd in curve_defs if cd.kind == "param"]
+    param_curve_ids = [cd.curve_id for cd in curve_defs if cd.kind == CurveDefKind.PARAM]
     param_index = {cid: i for i, cid in enumerate(param_curve_ids)}
     num_param = len(param_curve_ids)
 
-    max_sources = max((len(cd.sources) for cd in curve_defs if cd.kind == "lincomb"), default=1)
+    max_sources = max(
+        (len(cd.sources) for cd in curve_defs if cd.kind == CurveDefKind.LINCOMB), default=1
+    )
     max_sources = max(max_sources, 1)
 
     param_pos_np = -np.ones((n_curves,), dtype=np.int32)
@@ -111,16 +114,19 @@ def build_curve_graph_arrays(
     src_mask_np = np.zeros((n_curves, max_sources), dtype=np.float64)
 
     for i, cd in enumerate(curve_defs):
-        if cd.kind == "param":
-            is_param_np[i] = 1
-            param_pos_np[i] = param_index[cd.curve_id]
-        else:
-            for j, (src_cid, w) in enumerate(cd.sources):
-                if src_cid not in curve_id_to_idx:
-                    raise ValueError(f"Curve {cd.curve_id.name} depends on unknown {src_cid.name}")
-                src_idx_np[i, j] = curve_id_to_idx[src_cid]
-                src_w_np[i, j] = float(w)
-                src_mask_np[i, j] = 1.0
+        match cd.kind:
+            case CurveDefKind.PARAM:
+                is_param_np[i] = 1
+                param_pos_np[i] = param_index[cd.curve_id]
+            case _:
+                for j, (src_cid, w) in enumerate(cd.sources):
+                    if src_cid not in curve_id_to_idx:
+                        raise ValueError(
+                            f"Curve {cd.curve_id.name} depends on unknown {src_cid.name}"
+                        )
+                    src_idx_np[i, j] = curve_id_to_idx[src_cid]
+                    src_w_np[i, j] = float(w)
+                    src_mask_np[i, j] = 1.0
 
     arrays = CurveGraphArrays(
         param_pos=jnp.array(param_pos_np),
@@ -402,7 +408,7 @@ class CurveSetCalibrator:
             # For derived curves (lincomb), there's no CurveConfig in this POC,
             # so default to stepwise const for discounting.
             cfg = self.static.spec.curve_configs.get(
-                cid, CurveConfig(curve_id=cid, interp="stepwise_const_fwd")
+                cid, CurveConfig(curve_id=cid, interp=InterpType.STEPWISE_CONST_FWD)
             )
             interp = make_interpolator(cfg)
             params_curve = jnp.array(forwards_all_np[idx], dtype=jnp.float64)

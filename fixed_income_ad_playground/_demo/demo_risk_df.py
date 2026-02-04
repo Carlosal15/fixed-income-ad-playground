@@ -8,6 +8,14 @@ from fixed_income_ad_playground.calibration.calibration import (
 )
 from fixed_income_ad_playground.calibration.risk import _bucketize_vector, build_risk_engines
 from fixed_income_ad_playground.curve.curve_config import CurveConfig
+from fixed_income_ad_playground.enums import (
+    Currency,
+    CurveDefKind,
+    InterpType,
+    PaymentFrequency,
+    QuoteType,
+    SwapIndex,
+)
 from fixed_income_ad_playground.identifiers.identifiers import CurveId, InstrumentId
 from fixed_income_ad_playground.instruments.instrument import PackContext
 from fixed_income_ad_playground.instruments.swap import SwapSpec
@@ -129,13 +137,13 @@ def main_risk(
         sofr = CurveId("USD_SOFR")
 
         # Curve defs (single param curve)
-        curve_defs = (CurveDef(curve_id=sofr, kind="param"),)
+        curve_defs = (CurveDef(curve_id=sofr, kind=CurveDefKind.PARAM),)
 
         # Curve configs: small regularisation for slope/curv; no level penalty
         curve_configs = {
             sofr: CurveConfig(
                 curve_id=sofr,
-                interp="stepwise_const_fwd",
+                interp=InterpType.STEPWISE_CONST_FWD,
                 lam_slope=1e-4,
                 lam_curv=1e-6,
                 lam_level=0.0,
@@ -143,7 +151,7 @@ def main_risk(
         }
 
         # Refdata mapping (USD SOFR OIS -> (disc, fcast) both SOFR)
-        refdata = ReferenceDataContainer({"USD_SOFR_OIS": (sofr, sofr)})
+        refdata = ReferenceDataContainer({SwapIndex.USD_SOFR_OIS: (sofr, sofr)})
 
         # Spec
         spec = CurveSetSpec(curve_defs=list(curve_defs), curve_configs=curve_configs)
@@ -170,38 +178,38 @@ def main_risk(
         for m in spot_months:
             inst = SwapSpec(
                 instrument_id=InstrumentId(f"USD_SOFR_OIS_Spot_{round(m * 12)}M"),
-                currency="USD",
-                index="USD_SOFR_OIS",
+                currency=Currency.USD,
+                index=SwapIndex.USD_SOFR_OIS,
                 maturity=float(m),
                 forward_start_years=0.0,
-                fixed_leg_freq="A",
-                float_leg_freq="S",
+                fixed_leg_freq=PaymentFrequency.A,
+                float_leg_freq=PaymentFrequency.S,
             )
             val = month_par.get(round(m * 12), 0.035)
-            qts.append(Quote(inst, "par_rate", float(val), 1.0))
+            qts.append(Quote(inst, QuoteType.PAR_RATE, float(val), 1.0))
         for y in spot_years:
             inst = SwapSpec(
                 instrument_id=InstrumentId(f"USD_SOFR_OIS_Spot_{round(y)}Y"),
-                currency="USD",
-                index="USD_SOFR_OIS",
+                currency=Currency.USD,
+                index=SwapIndex.USD_SOFR_OIS,
                 maturity=float(y),
                 forward_start_years=0.0,
-                fixed_leg_freq="A",
-                float_leg_freq="S",
+                fixed_leg_freq=PaymentFrequency.A,
+                float_leg_freq=PaymentFrequency.S,
             )
             val = year_par.get(round(y), 0.035)
-            qts.append(Quote(inst, "par_rate", float(val), 1.0))
+            qts.append(Quote(inst, QuoteType.PAR_RATE, float(val), 1.0))
         for fs, ten in forwards:
             inst = SwapSpec(
                 instrument_id=InstrumentId(f"USD_SOFR_OIS_Fwd{round(fs)}Yx{round(ten)}Y"),
-                currency="USD",
-                index="USD_SOFR_OIS",
+                currency=Currency.USD,
+                index=SwapIndex.USD_SOFR_OIS,
                 maturity=float(ten),
                 forward_start_years=float(fs),
-                fixed_leg_freq="A",
-                float_leg_freq="S",
+                fixed_leg_freq=PaymentFrequency.A,
+                float_leg_freq=PaymentFrequency.S,
             )
-            qts.append(Quote(inst, "par_rate", 0.0, 0.0))
+            qts.append(Quote(inst, QuoteType.PAR_RATE, 0.0, 0.0))
 
         # Pack
         ctx = PackContext()
@@ -275,17 +283,17 @@ def risk_snapshot(
     if static is None or quotes is None:
         sofr = CurveId("USD_SOFR")
 
-        curve_defs = (CurveDef(curve_id=sofr, kind="param"),)
+        curve_defs = (CurveDef(curve_id=sofr, kind=CurveDefKind.PARAM),)
         curve_configs = {
             sofr: CurveConfig(
                 curve_id=sofr,
-                interp="stepwise_const_fwd",
+                interp=InterpType.STEPWISE_CONST_FWD,
                 lam_slope=1e-4,
                 lam_curv=1e-6,
                 lam_level=0.0,
             ),
         }
-        refdata = ReferenceDataContainer({"USD_SOFR_OIS": (sofr, sofr)})
+        refdata = ReferenceDataContainer({SwapIndex.USD_SOFR_OIS: (sofr, sofr)})
         spec = CurveSetSpec(curve_defs=curve_defs, curve_configs=curve_configs)
         curve_id_to_idx, graph = build_curve_graph_arrays(spec.curve_defs)
 
@@ -308,38 +316,38 @@ def risk_snapshot(
         for m in spot_months:
             inst = SwapSpec(
                 instrument_id=InstrumentId(f"USD_SOFR_OIS_Spot_{round(m * 12)}M"),
-                currency="USD",
-                index="USD_SOFR_OIS",
+                currency=Currency.USD,
+                index=SwapIndex.USD_SOFR_OIS,
                 maturity=float(m),
                 forward_start_years=0.0,
-                fixed_leg_freq="A",
-                float_leg_freq="S",
+                fixed_leg_freq=PaymentFrequency.A,
+                float_leg_freq=PaymentFrequency.S,
             )
             val = month_par.get(round(m * 12), 0.035)
-            qts.append(Quote(inst, "par_rate", float(val), 1.0))
+            qts.append(Quote(inst, QuoteType.PAR_RATE, float(val), 1.0))
         for y in spot_years:
             inst = SwapSpec(
                 instrument_id=InstrumentId(f"USD_SOFR_OIS_Spot_{round(y)}Y"),
-                currency="USD",
-                index="USD_SOFR_OIS",
+                currency=Currency.USD,
+                index=SwapIndex.USD_SOFR_OIS,
                 maturity=float(y),
                 forward_start_years=0.0,
-                fixed_leg_freq="A",
-                float_leg_freq="S",
+                fixed_leg_freq=PaymentFrequency.A,
+                float_leg_freq=PaymentFrequency.S,
             )
             val = year_par.get(round(y), 0.035)
-            qts.append(Quote(inst, "par_rate", float(val), 1.0))
+            qts.append(Quote(inst, QuoteType.PAR_RATE, float(val), 1.0))
         for fs, ten in forwards:
             inst = SwapSpec(
                 instrument_id=InstrumentId(f"USD_SOFR_OIS_Fwd{round(fs)}Yx{round(ten)}Y"),
-                currency="USD",
-                index="USD_SOFR_OIS",
+                currency=Currency.USD,
+                index=SwapIndex.USD_SOFR_OIS,
                 maturity=float(ten),
                 forward_start_years=float(fs),
-                fixed_leg_freq="A",
-                float_leg_freq="S",
+                fixed_leg_freq=PaymentFrequency.A,
+                float_leg_freq=PaymentFrequency.S,
             )
-            qts.append(Quote(inst, "par_rate", 0.0, 0.0))
+            qts.append(Quote(inst, QuoteType.PAR_RATE, 0.0, 0.0))
 
         ctx = PackContext()
         shape_policy = ShapePolicy()

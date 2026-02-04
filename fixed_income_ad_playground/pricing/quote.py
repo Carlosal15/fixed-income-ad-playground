@@ -10,12 +10,8 @@ It would be dictated by the config, but the quotes would be passed around.
 """
 
 from dataclasses import dataclass
-from typing import Literal
+from fixed_income_ad_playground.enums import QuoteType
 from fixed_income_ad_playground.instruments.instrument import Instrument
-
-
-# more of a stub for demo purposes, should be properly enumerated later
-QuoteType = Literal["par_rate"]
 
 
 @dataclass(frozen=True)
