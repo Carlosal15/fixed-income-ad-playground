@@ -37,7 +37,7 @@ from fixed_income_ad_playground.shape_policy import ShapePolicy
 from fixed_income_ad_playground.types import FloatNDArray
 
 
-def main(  # noqa: C901
+def main_benchmark(  # noqa: C901
     case: str = "usd_50",
     n_dates: int = 20,
     warm_start: bool = True,
@@ -622,4 +622,6 @@ def main(  # noqa: C901
 
 
 if __name__ == "__main__":
-    main(case="usd_50", n_dates=20, warm_start=True, noise_bps=0.1, max_steps=80, jac_mode="fwd")
+    main_benchmark(
+        case="usd_50", n_dates=20, warm_start=True, noise_bps=0.1, max_steps=80, jac_mode="fwd"
+    )
