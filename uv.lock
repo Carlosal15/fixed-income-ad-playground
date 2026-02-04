@@ -427,6 +427,7 @@ dev = [
     { name = "mypy", specifier = ">=1.19.1" },
     { name = "numpy", specifier = "==2.4.1" },
     { name = "optimistix" },
+    { name = "pandas" },
     { name = "pandas", specifier = "==3.0.0" },
     { name = "polars", specifier = "==1.37.1" },
     { name = "pre-commit", specifier = ">=4.5.1" },
