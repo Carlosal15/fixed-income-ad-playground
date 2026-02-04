@@ -92,3 +92,51 @@ def par_swap_rates_pooled(
     pv_float = jnp.sum(batch.cashflow_mask * batch.accrual_factors * fwd_rate * df_d_end, axis=1)
     annuity = jnp.sum(batch.cashflow_mask * batch.accrual_factors * df_d_end, axis=1)
     return safe_div(pv_float, annuity)
+
+
+def swap_pv_components_pooled(
+    params_concat: JaxArray,
+    knot_times: JaxArray,
+    graph: CurveGraphArrays,
+    batch: PackedSwapBatchPooled,
+) -> tuple[JaxArray, JaxArray]:
+    """
+    Returns (pv_float, annuity) per swap using pooled date table.
+    """
+    forwards_all = compute_forwards_all_curves(params_concat, knot_times, graph)  # (C,N)
+    _, cum_int_all = precompute_curve_integrals(knot_times, forwards_all)  # (C,N)
+
+    dfs_pool = jax.vmap(
+        lambda fwd, ci: dfs_from_precomputed(knot_times, fwd, ci, batch.t_pool),
+        in_axes=(0, 0),
+    )(forwards_all, cum_int_all)
+
+    # gather for each swap/cashflow
+    disc_idx_cf = jnp.repeat(
+        batch.discount_curve_idx[:, None], repeats=batch.cashflows_bucket_size, axis=1
+    )
+    fcast_idx_cf = jnp.repeat(
+        batch.forecast_curve_idx[:, None], repeats=batch.cashflows_bucket_size, axis=1
+    )
+
+    df_d_end = dfs_pool[disc_idx_cf, batch.idx_end]
+    df_f_end = dfs_pool[fcast_idx_cf, batch.idx_end]
+    df_f_start = dfs_pool[fcast_idx_cf, batch.idx_start]
+
+    ratio = safe_div(df_f_start, df_f_end)
+    fwd_rate = safe_div(ratio - 1.0, batch.accrual_factors)
+
+    pv_float = jnp.sum(batch.cashflow_mask * batch.accrual_factors * fwd_rate * df_d_end, axis=1)
+    annuity = jnp.sum(batch.cashflow_mask * batch.accrual_factors * df_d_end, axis=1)
+    return pv_float, annuity
+
+
+def swap_pv_pooled(
+    params_concat: JaxArray,
+    knot_times: JaxArray,
+    graph: CurveGraphArrays,
+    batch: PackedSwapBatchPooled,
+    coupon_per_swap: JaxArray,
+) -> JaxArray:
+    pv_float, annuity = swap_pv_components_pooled(params_concat, knot_times, graph, batch)
+    return (pv_float - coupon_per_swap * annuity) * batch.notional_per_swap

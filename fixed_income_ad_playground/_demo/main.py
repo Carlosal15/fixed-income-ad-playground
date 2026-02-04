@@ -39,9 +39,9 @@ def main(  # noqa: C901
 ) -> None:
     """
     Notebook usage:
-    main(case="usd_50", n_dates=20)
-    main(case="usd_100", n_dates=20)
-    main(case="eur_200", n_dates=20)
+      main(case="usd_50", n_dates=20)
+      main(case="usd_100", n_dates=20)
+      main(case="eur_200", n_dates=20)
     """
     ctx = PackContext()
     shape_policy = ShapePolicy()
@@ -257,10 +257,10 @@ def main(  # noqa: C901
     print(f"case={case}  n_dates={n_dates}  warm_start={warm_start}")
     print(f"solver max_steps={max_steps}  jac_mode={jac_mode}")
     print(
-        f"true shapes: swaps={batch.swap_count_true} max_cf={batch.max_cf_true} pooled_Q={batch.Q_true}"
+        f"true shapes: swaps={batch.swap_count_true} max_cf={batch.max_cf_true} pooled_Q={batch.pooled_time_count_true}"
     )
     print(
-        f"bucketed shape key: swaps={batch.swaps_bucket_size} cashflows={batch.cashflows_bucket_size} unique_times={batch.unique_times_bucket_size} | curves={len(curve_defs)} param_curves={P} N={N} maxT={maxT}"
+        f"bucketed shape key: S={batch.swaps_bucket_size} M={batch.cashflows_bucket_size} Q={batch.unique_times_bucket_size} | curves={len(curve_defs)} param_curves={P} N={N} maxT={maxT}"
     )
 
     # --------------------------
@@ -474,7 +474,7 @@ def main(  # noqa: C901
     first_curve = next(iter(market.curves.values()))
     z = np.asarray(first_curve.zero_rate(t_grid))
     print(f"\nSample zeros for curve {first_curve.curve_id.name}:")
-    for t, zz in zip(np.asarray(t_grid), z, strict=True):
+    for t, zz in zip(np.asarray(t_grid), z, strict=False):
         print(f"  t={t:5.2f}y  z={zz * 100:8.4f}%")
 
 

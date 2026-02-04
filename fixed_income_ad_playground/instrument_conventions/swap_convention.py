@@ -6,7 +6,7 @@ from fixed_income_ad_playground.enums import Currency, SwapIndex
 class SwapConvention:
     """
     Minimal convention object.
-    discount_curve_id and forecast_curve_id are resolved by "RefData"
+    discount_curve_id and forecast_curve_id are resolved by reference data
     for a given curveset.
     """
 

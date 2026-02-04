@@ -45,7 +45,8 @@ dev = [
     "matplotlib",
     "scipy==1.17.0",
     "scipy-stubs",
-    "optimistix"
+    "optimistix",
+    "pandas"
 
 ]
 

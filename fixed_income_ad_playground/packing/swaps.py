@@ -91,6 +91,7 @@ class PackedSwapBatchPooled:
     discount_curve_idx: JaxArray  # (S,)
     forecast_curve_idx: JaxArray  # (S,)
     weights: JaxArray  # (S,)
+    notional_per_swap: JaxArray  # (S,)
 
     # pooled date table and indices
     t_pool: JaxArray  # (Q,)
@@ -100,7 +101,7 @@ class PackedSwapBatchPooled:
     # true counts (for reporting)
     swap_count_true: int
     max_cf_true: int
-    Q_true: int
+    pooled_time_count_true: int
 
 
 def pack_swaps_pooled(
@@ -114,10 +115,11 @@ def pack_swaps_pooled(
     weights: list[float] = []
     disc: list[int] = []
     fcast: list[int] = []
+    notionals: list[float] = []
 
     for q in quotes:
         if q.quote_type != "par_rate":
-            raise ValueError("Only par_rate currently supported.")
+            raise ValueError("Only par_rate supported in this demo.")
         p = q.instrument.pack(ctx, refdata)
         if not isinstance(p, PackedSwap):
             raise NotImplementedError("Only swaps are implemented in pooled packing.")
@@ -125,10 +127,12 @@ def pack_swaps_pooled(
         weights.append(float(q.weight))
         disc.append(int(curve_id_to_idx[p.discount_curve]))
         fcast.append(int(curve_id_to_idx[p.forecast_curve]))
+        notionals.append(float(p.notional))
 
     S_true = len(packed)
     M_true = max((p.end_times.size for p in packed), default=0)
 
+    # pool times from true schedules
     # pool times from true schedules
     times = [0.0]
     for s in packed:
@@ -166,9 +170,11 @@ def pack_swaps_pooled(
     w_np = np.zeros((shape.swaps_bucket_size,), dtype=np.float64)
     d_np = np.zeros((shape.swaps_bucket_size,), dtype=np.int32)
     f_np = np.zeros((shape.swaps_bucket_size,), dtype=np.int32)
+    notional_np = np.zeros((shape.swaps_bucket_size,), dtype=np.float64)
     w_np[:S_true] = np.asarray(weights, dtype=np.float64)
     d_np[:S_true] = np.asarray(disc, dtype=np.int32)
     f_np[:S_true] = np.asarray(fcast, dtype=np.int32)
+    notional_np[:S_true] = np.asarray(notionals, dtype=np.float64)
 
     return PackedSwapBatchPooled(
         swaps_bucket_size=shape.swaps_bucket_size,
@@ -181,10 +187,11 @@ def pack_swaps_pooled(
         discount_curve_idx=jnp.array(d_np),
         forecast_curve_idx=jnp.array(f_np),
         weights=jnp.array(w_np),
+        notional_per_swap=jnp.array(notional_np),
         t_pool=jnp.array(t_pool_np),
         idx_start=jnp.array(idx_s_np),
         idx_end=jnp.array(idx_e_np),
         swap_count_true=S_true,
         max_cf_true=M_true,
-        Q_true=Q_true,
+        pooled_time_count_true=Q_true,
     )

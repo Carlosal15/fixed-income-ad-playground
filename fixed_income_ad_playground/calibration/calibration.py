@@ -95,20 +95,20 @@ def build_curve_graph_arrays(
     curve_defs: list[CurveDef],
 ) -> tuple[dict[CurveId, int], CurveGraphArrays]:
     curve_id_to_idx: dict[CurveId, int] = {cd.curve_id: i for i, cd in enumerate(curve_defs)}
-    C = len(curve_defs)
+    n_curves = len(curve_defs)
 
     param_curve_ids = [cd.curve_id for cd in curve_defs if cd.kind == "param"]
     param_index = {cid: i for i, cid in enumerate(param_curve_ids)}
     num_param = len(param_curve_ids)
 
-    K = max((len(cd.sources) for cd in curve_defs if cd.kind == "lincomb"), default=1)
-    K = max(K, 1)
+    max_sources = max((len(cd.sources) for cd in curve_defs if cd.kind == "lincomb"), default=1)
+    max_sources = max(max_sources, 1)
 
-    param_pos_np = -np.ones((C,), dtype=np.int32)
-    is_param_np = np.zeros((C,), dtype=np.int32)
-    src_idx_np = np.zeros((C, K), dtype=np.int32)
-    src_w_np = np.zeros((C, K), dtype=np.float64)
-    src_mask_np = np.zeros((C, K), dtype=np.float64)
+    param_pos_np = -np.ones((n_curves,), dtype=np.int32)
+    is_param_np = np.zeros((n_curves,), dtype=np.int32)
+    src_idx_np = np.zeros((n_curves, max_sources), dtype=np.int32)
+    src_w_np = np.zeros((n_curves, max_sources), dtype=np.float64)
+    src_mask_np = np.zeros((n_curves, max_sources), dtype=np.float64)
 
     for i, cd in enumerate(curve_defs):
         if cd.kind == "param":
@@ -133,13 +133,27 @@ def build_curve_graph_arrays(
     return curve_id_to_idx, arrays
 
 
+# TODO: remove
+# @dataclass(frozen=True)
+# class StaticCalibrationData:
+#     knot_times: JaxArray
+#     graph: CurveGraphArrays
+#     batch: PackedSwapBatchPooled
+#     lam_slope: JaxArray
+#     lam_curv: JaxArray
+#     spec: CurveSetSpec
+#     param_curve_ids: tuple[CurveId, ...]  # order of param blocks
+#     curve_id_order: tuple[CurveId, ...]  # curve_defs order (for building full curves)
+
+
 @dataclass(frozen=True)
-class StaticCalibrationData:
+class CalibStatic:
     knot_times: JaxArray
     graph: CurveGraphArrays
     batch: PackedSwapBatchPooled
     lam_slope: JaxArray
     lam_curv: JaxArray
+    lam_level: JaxArray
     spec: CurveSetSpec
     param_curve_ids: tuple[CurveId, ...]  # order of param blocks
     curve_id_order: tuple[CurveId, ...]  # curve_defs order (for building full curves)
@@ -150,7 +164,7 @@ def make_calib_static(
     graph: CurveGraphArrays,
     batch: PackedSwapBatchPooled,
     spec: CurveSetSpec,
-) -> StaticCalibrationData:
+) -> CalibStatic:
     # param curve order is the order in curve_defs where kind == param
     param_curve_ids = tuple(cd.curve_id for cd in spec.curve_defs if cd.kind == "param")
     lam_slope_np = np.array(
@@ -159,13 +173,17 @@ def make_calib_static(
     lam_curv_np = np.array(
         [spec.curve_configs[cid].lam_curv for cid in param_curve_ids], dtype=np.float64
     )
+    lam_level_np = np.array(
+        [spec.curve_configs[cid].lam_level for cid in param_curve_ids], dtype=np.float64
+    )
 
-    return StaticCalibrationData(
+    return CalibStatic(
         knot_times=jnp.array(np.asarray(knot_times_np, dtype=np.float64)),
         graph=graph,
         batch=batch,
         lam_slope=jnp.array(lam_slope_np),
         lam_curv=jnp.array(lam_curv_np),
+        lam_level=jnp.array(lam_level_np),
         spec=spec,
         param_curve_ids=param_curve_ids,
         curve_id_order=tuple(cd.curve_id for cd in spec.curve_defs),
@@ -190,9 +208,7 @@ class CalibrationResult:
 
 
 def compute_forwards_all_curves(
-    params_concat: JaxArray,
-    knot_times: JaxArray,
-    graph: CurveGraphArrays,
+    params_concat: JaxArray, knot_times: JaxArray, graph: CurveGraphArrays
 ) -> JaxArray:
     """
     params_concat: concatenated blocks for param curves, each block length N
@@ -227,15 +243,12 @@ def compute_forwards_all_curves(
 class CurveSetCalibrator:
     """
     Production-like pattern:
-    - keep jitted path pure-array and stable-shape
-    - compile once per (ShapeKey, knot grid, curveset graph)
-    - build Market from calibrated params for pricing
-
-    Attempts to keep jit warm-up times to a minimum (as long as shapes don't change
-    and the ShapePolicy does a best effort to keep them constant)
+      - keep jitted path pure-array and stable-shape
+      - compile once per (ShapeKey, knot grid, curveset graph)
+      - build Market from calibrated params for pricing
     """
 
-    def __init__(self, static: StaticCalibrationData):
+    def __init__(self, static: CalibStatic):
         self.static = static
 
         # Pre-build interpolators per curve_id for Market construction
@@ -252,21 +265,16 @@ class CurveSetCalibrator:
                 static.batch,
                 static.lam_slope,
                 static.lam_curv,
+                static.lam_level,
             )
 
         self.res_fn = res_fn
-
-        # NOTE: with this design, each CurveSetCalibrator jits and owns its own residuals and
-        # jacobians functions. However, it may introduce unnecessary warmup overhead, if jax shapes are
-        # preserved among different calibrators (either for different curvesets or dates), it would
-        # jit the same shapes more than once. It would be useful to include a smart jitted function
-        # provider/initialiser.
         self.res_jit = jax.jit(res_fn)
         self.jac_jit = jax.jit(jax.jacfwd(res_fn, argnums=0))
 
-        # JIT helper to compute all curves forwards (for building market)
+        # JIT helper to compute all curves forwards (for building Market)
         def forwards_all_fn(x):
-            return compute_forwards_all_curves(x, static.knot_times, static.graph)
+            return compute_forwards_all_curves(x, static.knot_times, static.graph)  # (C,N)
 
         self.forwards_all_jit = jax.jit(forwards_all_fn)
 
@@ -277,7 +285,7 @@ class CurveSetCalibrator:
         _ = self.forwards_all_jit(x0).block_until_ready()
         return time.perf_counter() - t0
 
-    # ---------- Least squares solvers (Optimistix) ----------
+    # LS solvers
     def build_optx_least_squares_value_only(self, solver_kind: str, max_steps: int, jac_mode: str):
         import optimistix as optx
 
@@ -326,7 +334,7 @@ class CurveSetCalibrator:
         code = int(getattr(sol.result, "_value", 999))
         return DebugStats(steps=steps, result_code=code)
 
-    # ---------- Scalar objective solvers ----------
+    # Scalar objective solvers
     def build_optx_scalar_value_only(self, solver_kind: str, max_steps: int):
         import optimistix as optx
 
@@ -378,8 +386,10 @@ class CurveSetCalibrator:
     # ---------- Build Market from calibrated parameters ----------
     def build_market(self, params_concat: JaxArray) -> Market:
         """
-        Uses the same curveset graph as calibration to produce calibrated curves.
+        Uses the same curveset graph as calibration to produce full curve forwards.
         Then builds python-layer Curve objects with interpolators from CurveConfig.
+
+        NOTE: we support stepwise const forwards fully; other interpolators stub.
         """
         forwards_all = self.forwards_all_jit(params_concat).block_until_ready()  # (C,N)
         forwards_all_np = np.asarray(forwards_all, dtype=np.float64)

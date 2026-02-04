@@ -13,7 +13,7 @@ class Curve:
 
     curve_id: CurveId
     knot_times: JaxArray  # (N+1,)
-    params: JaxArray  # (N,) for stepwise const fwd
+    params: JaxArray  # (N,)
     interpolator: Interpolator
 
     def discount_factors(self, t: JaxArray) -> JaxArray:

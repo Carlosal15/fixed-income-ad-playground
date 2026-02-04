@@ -43,16 +43,17 @@ class CurveSetConfig:
 class CurveConfig:
     """
     User-facing curve config. In a real package this would include:
-      - interpolator type + params
-      - penalties
-      - bounds, constraints
-      - etc
+    - interpolator type + params
+    - penalties
+    - bounds, constraints
+    - etc
     """
 
     curve_id: CurveId
     interp: InterpType = "stepwise_const_fwd"
     lam_slope: float = 0.0
     lam_curv: float = 0.0
+    lam_level: float = 0.0
     # stub params for mixed interpolator
     mixed_switch_time: float = 0.0
 

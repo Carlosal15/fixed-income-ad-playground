@@ -29,5 +29,5 @@ class StIRFutureSpec(Instrument):
 @dataclass(frozen=True)
 class PackedStIRFuture(PackedInstrument):
     instrument_id: InstrumentId
-    # etc...
+    # stub
     pass

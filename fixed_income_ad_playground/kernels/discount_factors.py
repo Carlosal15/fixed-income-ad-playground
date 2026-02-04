@@ -8,21 +8,18 @@ import jax.numpy as jnp
 
 
 def dfs_from_stepwise_const_forwards(
-    knot_times: JaxArray,  # (interval_count+1,)
-    ifr_values: JaxArray,  # (interval_count,)
-    query_times: JaxArray,  # (Q,)
+    knot_times: JaxArray, ifr_vals: JaxArray, query_times: JaxArray
 ) -> JaxArray:
     """
-    Discount factors P(0,t) for stepwise-constant instantaneous forwards.
+    Convenience (single curve) wrapper. Kept for the python-layer Curve object.
     """
-    interval_lengths = jnp.diff(knot_times)  # (interval_count,)
-    cumulative_integral = jnp.cumsum(ifr_values * interval_lengths)  # (interval_count,)
-
-    interval_index = jnp.searchsorted(knot_times, query_times, side="right") - 1
-    interval_index = jnp.clip(interval_index, 0, ifr_values.size - 1)
-
-    integral_to_prev = jnp.where(interval_index > 0, cumulative_integral[interval_index - 1], 0.0)
-    partial = ifr_values[interval_index] * (query_times - knot_times[interval_index])
+    dt = jnp.diff(knot_times)
+    cum_int = jnp.cumsum(ifr_vals * dt, axis=0)
+    idx = jnp.searchsorted(knot_times, query_times, side="right") - 1
+    idx = jnp.clip(idx, 0, ifr_vals.size - 1)
+    integral_to_prev = jnp.where(idx > 0, cum_int[idx - 1], 0.0)
+    t_left = knot_times[idx]
+    partial = ifr_vals[idx] * (query_times - t_left)
     return jnp.exp(-(integral_to_prev + partial))
 
 

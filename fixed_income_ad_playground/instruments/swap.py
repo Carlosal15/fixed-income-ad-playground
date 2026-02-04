@@ -28,23 +28,26 @@ class SwapSpec(Instrument):
     instrument_id: InstrumentId
     currency: Currency
     index: SwapIndex
-    maturity: float  # years
+    maturity: float  # years (tenor length)
+    notional: float = 1_000_000.0
+    forward_start_years: float = 0.0  # forward start
     fixed_leg_freq: PaymentFrequency = "A"
     float_leg_freq: PaymentFrequency = "S"
-    # If you want to experiment with "shared coupons", use "S"/"Q".
 
     def pack(self, ctx: PackContext, reference_data: ReferenceDataContainer) -> PackedSwap:
-        max_t = float(self.maturity)
+        tenor = float(self.maturity)
+        fwd_start = float(self.forward_start_years)
         disc_curve, fcast_curve = reference_data.swap_curves(self.index)
 
         # Demo schedule: by leg freq (keep it simple)
+        freq_to_step = {"A": 1.0, "S": 0.5, "Q": 0.25}
+        step = float(freq_to_step[self.float_leg_freq])
 
-        step = float(_freq_to_step[self.float_leg_freq])
-
-        n_pay = int(np.ceil(max_t / step))
-        end_times = np.arange(1, n_pay + 1, dtype=np.float64) * step
-        end_times[-1] = max_t
-        start_times = np.concatenate([[0.0], end_times[:-1]], axis=0)
+        n_pay = int(np.ceil(tenor / step))
+        # Forward-start schedule: shift by F, ensure last payment hits F+T
+        end_times = fwd_start + np.arange(1, n_pay + 1, dtype=np.float64) * step
+        end_times[-1] = fwd_start + tenor
+        start_times = np.concatenate([[fwd_start], end_times[:-1]], axis=0)
         accrual = (end_times - start_times).astype(np.float64)
 
         return PackedSwap(
@@ -54,7 +57,8 @@ class SwapSpec(Instrument):
             start_times=start_times,
             end_times=end_times,
             accrual_factors=accrual,
-            maturity_years=max_t,
+            maturity_years=tenor,
+            notional=self.notional,
         )
 
 
@@ -67,3 +71,4 @@ class PackedSwap(PackedInstrument):
     end_times: FloatNDArray
     accrual_factors: FloatNDArray
     maturity_years: float
+    notional: float

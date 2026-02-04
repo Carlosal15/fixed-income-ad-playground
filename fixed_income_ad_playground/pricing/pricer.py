@@ -14,6 +14,8 @@ class Pricer:
     swap_pricer: SwapPricer = SwapPricer()
 
     # TODO: only par-rate currently implemented
+    # In a more complete implementation, we'd have have a dynamic dispatcher
+    # for different metrics per instrument type.
     def par_rate(
         self,
         market: Market,

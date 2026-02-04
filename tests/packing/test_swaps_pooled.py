@@ -36,12 +36,12 @@ def test_pack_swaps_pooled_shapes_and_indices():
     # True counts
     assert batch.swap_count_true == 2
     assert batch.max_cf_true >= 2
-    assert batch.Q_true >= 3
+    assert batch.pooled_time_count_true >= 3
 
     # Bucket sizes are powers of two or predefined buckets
     assert batch.swaps_bucket_size >= batch.swap_count_true
     assert batch.cashflows_bucket_size >= batch.max_cf_true
-    assert batch.unique_times_bucket_size >= batch.Q_true
+    assert batch.unique_times_bucket_size >= batch.pooled_time_count_true
 
     # Indices refer into pooled times correctly
     for i in range(batch.swap_count_true):
