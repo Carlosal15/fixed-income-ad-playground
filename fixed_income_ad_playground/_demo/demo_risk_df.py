@@ -282,7 +282,7 @@ def risk_snapshot(
     # Default build if needed (same pattern as `main_risk`)
     if static is None or quotes is None:
         sofr = CurveId("USD_SOFR")
-        curve_defs = (CurveDef(curve_id=sofr, kind=CurveDefKind.PARAM),)
+        curve_defs = [CurveDef(curve_id=sofr, kind=CurveDefKind.PARAM)]
         curve_configs = {
             sofr: CurveConfig(
                 curve_id=sofr,
