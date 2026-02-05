@@ -156,7 +156,7 @@ To add new functionality:
 Expanding on what was metnioned above.
 
 - JAX caches compiled kernels by function + array shapes + dtypes.
-- Packing converts date-to-date instrument changes (missing quotes, schedule changes) into masked, fixed-shape arrays.
+- Packing converts date-to-date instrument changes (missing quotes, schedule changes) into masked, fixed-shape arrays. We use a `ShapePolicy` that tries to keep shapes persisting by padding to fixed shapes.
 - Calibration performance comes from:
   - compiled kernels
   - single AD pass for full Jacobian
