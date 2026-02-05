@@ -1,45 +1,70 @@
 from dataclasses import dataclass
 
+from fixed_income_ad_playground.reference_data_container import ReferenceDataContainer
 from fixed_income_ad_playground.instruments.instrument import PackContext
 from fixed_income_ad_playground.instruments.swap import SwapSpec, PackedSwap
-from fixed_income_ad_playground.market.market import Market
+from fixed_income_ad_playground.market import Market
 from fixed_income_ad_playground.kernels.utils import safe_div
 import jax.numpy as jnp
 
 
 @dataclass(frozen=True)
 class SwapPricer:
-    def par_rate(self, market: Market, swap: SwapSpec, ctx: PackContext) -> float:
-        packed = swap.pack(ctx)
+    """
+    Prices and analytics for swaps
+    """
 
-        if not isinstance(packed, PackedSwap):
-            raise TypeError("par_rate expects SwapSpec/PackedSwap only")
-        curve = market.curve(packed.discount_curve)
+    def par_rate(
+        self,
+        market: Market,
+        swap: SwapSpec,
+        ctx: PackContext,
+        reference_data: ReferenceDataContainer,
+    ) -> float:
+        p = swap.pack(ctx, reference_data)
+        if not isinstance(p, PackedSwap):
+            raise TypeError("Expected (packed) swaps")
 
-        payment_times = jnp.array(packed.payment_times)
-        accruals = jnp.array(packed.accrual_factors)
+        disc = market.curve(p.discount_curve)
+        fcast = market.curve(p.forecast_curve)
 
-        df_pay = curve.discount_factors(payment_times)
-        df_T = curve.discount_factors(jnp.array([packed.maturity_years]))[0]
+        st = jnp.array(p.start_times)
+        et = jnp.array(p.end_times)
+        alpha = jnp.array(p.accrual_factors)
 
-        annuity = jnp.sum(accruals * df_pay)
-        par = safe_div(1.0 - df_T, annuity)
-        return float(par)
+        df_d = disc.discount_factors(et)
+        df_f_s = fcast.discount_factors(st)
+        df_f_e = fcast.discount_factors(et)
 
-    def pv(self, market: Market, swap: SwapSpec, fixed_rate: float, ctx: PackContext) -> float:
-        packed = swap.pack(ctx)
+        fwd = safe_div(safe_div(df_f_s, df_f_e) - 1.0, alpha)
+        pv_float = jnp.sum(alpha * fwd * df_d)
+        annuity = jnp.sum(alpha * df_d)
+        return float(safe_div(pv_float, annuity))
 
-        if not isinstance(packed, PackedSwap):
-            raise TypeError("pv expects SwapSpec/PackedSwap only")
-        curve = market.curve(packed.discount_curve)
+    def pv(
+        self,
+        market: Market,
+        swap: SwapSpec,
+        fixed_rate: float,
+        ctx: PackContext,
+        reference_data: ReferenceDataContainer,
+    ) -> float:
+        p = swap.pack(ctx, reference_data)
+        if not isinstance(p, PackedSwap):
+            raise TypeError("Expected (packed) swaps")
 
-        payment_times = jnp.array(packed.payment_times)
-        accruals = jnp.array(packed.accrual_factors)
+        disc = market.curve(p.discount_curve)
+        fcast = market.curve(p.forecast_curve)
 
-        df_pay = curve.discount_factors(payment_times)
-        df_T = curve.discount_factors(jnp.array([packed.maturity_years]))[0]
+        st = jnp.array(p.start_times)
+        et = jnp.array(p.end_times)
+        alpha = jnp.array(p.accrual_factors)
 
-        pv_float = 1.0 - df_T
-        pv_fixed = float(fixed_rate) * jnp.sum(accruals * df_pay)
-        pv = pv_fixed - pv_float
-        return float(pv)
+        df_d = disc.discount_factors(et)
+        df_f_s = fcast.discount_factors(st)
+        df_f_e = fcast.discount_factors(et)
+
+        fwd = safe_div(safe_div(df_f_s, df_f_e) - 1.0, alpha)
+        pv_float = jnp.sum(alpha * fwd * df_d)
+        pv_fixed = float(fixed_rate) * jnp.sum(alpha * df_d)
+        return float(pv_fixed - pv_float)

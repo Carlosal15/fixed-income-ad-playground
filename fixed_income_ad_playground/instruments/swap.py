@@ -7,9 +7,12 @@ from fixed_income_ad_playground.instruments.instrument import (
     PackContext,
     PackedInstrument,
 )
-from fixed_income_ad_playground.enums import DayCount
+from fixed_income_ad_playground.enums import Currency, SwapIndex, PaymentFrequency
 from fixed_income_ad_playground.types import FloatNDArray
+from fixed_income_ad_playground.reference_data_container import ReferenceDataContainer
 import numpy as np
+
+_freq_to_step = {"A": 1.0, "S": 0.5, "Q": 0.25}
 
 
 @dataclass(frozen=True)
@@ -23,30 +26,39 @@ class SwapSpec(Instrument):
     """
 
     instrument_id: InstrumentId
-    maturity: float
-    discount_curve: CurveId
-    daycount: DayCount = "ACT/365"  # TODO: mock value- no datetime handling implemented
+    currency: Currency
+    index: SwapIndex
+    maturity: float  # years (tenor length)
+    notional: float = 1_000_000.0
+    forward_start_years: float = 0.0  # forward start
+    fixed_leg_freq: PaymentFrequency = PaymentFrequency.A
+    float_leg_freq: PaymentFrequency = PaymentFrequency.S
 
-    def pack(self, ctx: PackContext) -> PackedSwap:
-        # Packing here produces a *ragged* schedule; batching/padding happens later.
-        maturity_years = float(self.maturity)
-        if maturity_years <= 1.0:
-            payment_times = np.array([maturity_years], dtype=np.float64)
-            accrual_factors = np.array(
-                [maturity_years], dtype=np.float64
-            )  # toy: accrual = maturity
-        else:
-            payment_count = int(np.ceil(maturity_years))
-            payment_times = np.arange(1, payment_count + 1, dtype=np.float64)
-            payment_times[-1] = maturity_years
-            accrual_factors = np.ones_like(payment_times, dtype=np.float64)
+    def pack(self, ctx: PackContext, reference_data: ReferenceDataContainer) -> PackedSwap:
+        tenor = float(self.maturity)
+        fwd_start = float(self.forward_start_years)
+        disc_curve, fcast_curve = reference_data.swap_curves(self.index)
+
+        # Demo schedule: by leg freq (keep it simple)
+        freq_to_step = {"A": 1.0, "S": 0.5, "Q": 0.25}
+        step = float(freq_to_step[self.float_leg_freq])
+
+        n_pay = int(np.ceil(tenor / step))
+        # Forward-start schedule: shift by F, ensure last payment hits F+T
+        end_times = fwd_start + np.arange(1, n_pay + 1, dtype=np.float64) * step
+        end_times[-1] = fwd_start + tenor
+        start_times = np.concatenate([[fwd_start], end_times[:-1]], axis=0)
+        accrual = (end_times - start_times).astype(np.float64)
 
         return PackedSwap(
             instrument_id=self.instrument_id,
-            discount_curve=self.discount_curve,
-            payment_times=payment_times,
-            accrual_factors=accrual_factors,
-            maturity_years=maturity_years,
+            discount_curve=disc_curve,
+            forecast_curve=fcast_curve,
+            start_times=start_times,
+            end_times=end_times,
+            accrual_factors=accrual,
+            maturity_years=tenor,
+            notional=self.notional,
         )
 
 
@@ -54,6 +66,9 @@ class SwapSpec(Instrument):
 class PackedSwap(PackedInstrument):
     instrument_id: InstrumentId
     discount_curve: CurveId
-    payment_times: FloatNDArray  # (k,) ragged
-    accrual_factors: FloatNDArray  # (k,) ragged
+    forecast_curve: CurveId
+    start_times: FloatNDArray
+    end_times: FloatNDArray
+    accrual_factors: FloatNDArray
     maturity_years: float
+    notional: float

@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -430,7 +430,7 @@ def plot_forward_and_zero(
     t_step = np.column_stack([t0, t1]).reshape(-1)
 
     plt.figure(figsize=(10, 4))
-    for f, lab in zip(curves_f, labels):
+    for f, lab in zip(curves_f, labels, strict=True):
         f = np.asarray(f, dtype=np.float64)
         f_step = np.column_stack([f, f]).reshape(-1)
         plt.plot(t_step, f_step, label=lab)
@@ -444,7 +444,7 @@ def plot_forward_and_zero(
     plt.figure(figsize=(10, 4))
     knot_j = jnp.array(knot_times)
     t_grid = jnp.linspace(0.01, float(knot_times[-1]), 800)
-    for f, lab in zip(curves_f, labels):
+    for f, lab in zip(curves_f, labels, strict=True):
         f_j = jnp.array(np.asarray(f, dtype=np.float64))
         df = dfs_from_stepwise_const_forwards(knot_j, f_j, t_grid)
         z = -jnp.log(df) / t_grid

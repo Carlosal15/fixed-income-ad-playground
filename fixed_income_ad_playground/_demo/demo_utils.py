@@ -84,7 +84,7 @@ def plot_forward_and_zero(
     step_times = np.column_stack([left, right]).reshape(-1)
 
     plt.figure(figsize=(10, 4))
-    for forward_params, label in zip(curves_forward, labels):
+    for forward_params, label in zip(curves_forward, labels, strict=True):
         step_values = np.column_stack([forward_params, forward_params]).reshape(-1)
         plt.plot(step_times, step_values, label=label)
     plt.xlabel("Maturity (years)")
@@ -97,7 +97,7 @@ def plot_forward_and_zero(
     plt.figure(figsize=(10, 4))
     knot_jax = jnp.array(knot_times)
     t_grid = jnp.linspace(0.01, float(knot_times[-1]), 800)
-    for forward_params, label in zip(curves_forward, labels):
+    for forward_params, label in zip(curves_forward, labels, strict=True):
         f_jax = jnp.array(forward_params)
         df = dfs_from_stepwise_const_forwards(knot_jax, f_jax, t_grid)
         zero = -jnp.log(df) / t_grid

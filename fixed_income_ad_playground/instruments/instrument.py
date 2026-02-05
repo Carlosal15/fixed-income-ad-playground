@@ -1,14 +1,20 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from fixed_income_ad_playground.identifiers.identifiers import InstrumentId, CurveId
+from fixed_income_ad_playground.identifiers.identifiers import InstrumentId
 from typing import Protocol, runtime_checkable
+from fixed_income_ad_playground.reference_data_container import ReferenceDataContainer
 
 
 @dataclass(frozen=True)
 class PackContext:
     """
-    Acting as a context for packing instruments. Can contain market data references,
-    configuration flags, etc. Empty for now...
+    Acting as a context for packing instruments.
+    Real case would include things like      ]
+    - valuation date
+    - calendars, conventions
+    - fixings
+    - daycounts
+    - etc
     """
 
     pass
@@ -24,11 +30,11 @@ class Instrument(Protocol):
 
     instrument_id: InstrumentId
 
-    def pack(self, ctx: PackContext) -> PackedInstrument: ...
+    def pack(
+        self, ctx: PackContext, reference_data: ReferenceDataContainer
+    ) -> PackedInstrument: ...
 
 
 @runtime_checkable
 class PackedInstrument(Protocol):
-    # assume same forecast and discount curve
     instrument_id: InstrumentId
-    discount_curve: CurveId
