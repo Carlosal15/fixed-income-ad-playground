@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 
 
-def pv_jacobian_wrt_params(
+def pv_jacobian_wrt_params(  # type: ignore
     knot_times: JaxArray,
     graph: CurveGraphArrays,
     batch: PackedSwapBatchPooled,

@@ -1,4 +1,3 @@
-# type: ignore
 import jax
 import time
 from dataclasses import dataclass

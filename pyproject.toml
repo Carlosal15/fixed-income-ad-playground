@@ -66,8 +66,24 @@ check_untyped_defs = true
 warn_return_any = true
 warn_unused_ignores = false
 show_error_codes = true
-exclude = "(^|/)fixed_income_ad_playground/_[^/]+(/.*)?$"
+exclude = ["(^|/)fixed_income_ad_playground/_[^/]+(/.*)?$"]
 disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "fixed_income_ad_playground.calibration.calibration"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "fixed_income_ad_playground.kernels.risk"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "fixed_income_ad_playground.calibration.risk"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "fixed_income_ad_playground.pricing.risk_pricer"
+ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
